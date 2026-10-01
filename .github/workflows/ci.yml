@@ -16,6 +16,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    # The self-test matches bar characters with grep, which needs a UTF-8 locale.
+    env:
+      LC_ALL: ${{ matrix.os == 'macos-latest' && 'en_US.UTF-8' || 'C.UTF-8' }}
     defaults:
       run:
         shell: bash
@@ -36,7 +39,7 @@ jobs:
           CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-config
         run: |
           bash install.sh
-          jq -e '.statusLine.command | test("statusline\.sh$")' "$CLAUDE_CONFIG_DIR/settings.json"
+          jq -e '.statusLine.command | endswith("statusline.sh")' "$CLAUDE_CONFIG_DIR/settings.json"
           bash install.sh --uninstall
           jq -e 'has("statusLine") | not' "$CLAUDE_CONFIG_DIR/settings.json"
           test ! -e "$CLAUDE_CONFIG_DIR/statusline.sh"
