@@ -1,5 +1,7 @@
 # claude-code-statusline
 
+[![CI](https://github.com/prasanna7401/claude-code-statusline/actions/workflows/ci.yml/badge.svg)](https://github.com/prasanna7401/claude-code-statusline/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A two-line status bar for [Claude Code](https://claude.com/claude-code) that shows what you are spending and how full Claude's memory is, at a glance.
 
 ```

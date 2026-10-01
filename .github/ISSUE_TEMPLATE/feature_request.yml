@@ -1,0 +1,10 @@
+name: Feature request
+description: Suggest something the status line should show or do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like, and why would it help?
+    validations:
+      required: true
