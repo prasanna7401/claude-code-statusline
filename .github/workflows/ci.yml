@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    name: selftest (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    # The self-test matches bar characters with grep, which needs a UTF-8 locale.
+    env:
+      LC_ALL: ${{ matrix.os == 'macos-latest' && 'en_US.UTF-8' || 'C.UTF-8' }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      # macOS ships bash 3.2; the status line needs 4.2+.
+      - name: Install bash and jq (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install bash jq
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+      - name: Show tool versions
+        run: bash --version | head -n 1 && jq --version && git --version
+      - name: Self-test
+        run: bash statusline.sh --selftest
+      - name: Install and uninstall into a throwaway config dir
+        env:
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-config
+        run: |
+          bash install.sh
+          jq -e '.statusLine.command | endswith("statusline.sh")' "$CLAUDE_CONFIG_DIR/settings.json"
+          bash install.sh --uninstall
+          jq -e 'has("statusLine") | not' "$CLAUDE_CONFIG_DIR/settings.json"
+          test ! -e "$CLAUDE_CONFIG_DIR/statusline.sh"
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ShellCheck (errors only)
+        run: shellcheck --severity=error statusline.sh install.sh
