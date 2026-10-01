@@ -1,0 +1,6 @@
+# scratch work
+tmp/
+# editor and OS clutter
+.DS_Store
+Thumbs.db
+*.swp
