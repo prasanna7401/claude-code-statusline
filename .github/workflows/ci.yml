@@ -39,7 +39,7 @@ jobs:
           CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-config
         run: |
           bash install.sh
-          jq -e '.statusLine.command | endswith("statusline.sh")' "$CLAUDE_CONFIG_DIR/settings.json"
+          jq -e '.statusLine.command | endswith("statusline.sh\"")' "$CLAUDE_CONFIG_DIR/settings.json"
           bash install.sh --uninstall
           jq -e 'has("statusLine") | not' "$CLAUDE_CONFIG_DIR/settings.json"
           test ! -e "$CLAUDE_CONFIG_DIR/statusline.sh"

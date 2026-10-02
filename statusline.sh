@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# claude-statusline — a two-line status line for Claude Code.
+# claude-code-statusline: a two-line status line for Claude Code.
 #
 #   line 1: Opus 5.5 (1M)-high | my-project | main ±4 ↑1 | $0.52 ($9.87/h) | today $3.10 · Oct $41.20
-#   line 2: █░░░░░░░░░   7% 67.1k/1.0M  +142/-38  ~12 turns to red
+#   line 2: ░░░░░░░░░░   7% 67.1k/1.0M  +142/-38  ~12 turns to red
 #
 # Line 1  model and effort level, working directory, git branch with dirty /
 #         ahead / behind counts, session cost and burn rate, then spend today
@@ -13,13 +13,12 @@
 #         remain before the bar turns red.
 #
 # Install
-#   1. Requirements: bash >= 4.2, jq, git (optional, for the git segment).
-#      macOS ships bash 3.2: `brew install bash jq`.
-#   2. Save this file as ~/.claude/statusline.sh.
-#   3. Add to ~/.claude/settings.json:
-#        "statusLine": { "type": "command", "command": "bash ~/.claude/statusline.sh" }
-#      On Windows (Git Bash) use an absolute path, e.g. "bash C:/Users/me/.claude/statusline.sh".
-#   4. Check it: `bash ~/.claude/statusline.sh --selftest`
+#   See README.md, or run install.sh from the project folder.
+#   By hand: copy this file to ~/.claude/statusline.sh and set
+#     "statusLine": { "type": "command", "command": "bash ~/.claude/statusline.sh" }
+#   in ~/.claude/settings.json (on Windows use C:/Users/<you>/.claude/statusline.sh).
+#   Needs bash 4.2 or newer and jq; git is optional and only feeds the branch part.
+#   Check it: `bash ~/.claude/statusline.sh --selftest`
 #
 # Where the cost figures come from
 #   Every dollar amount is Claude Code's own estimate (`cost.total_cost_usd` in
@@ -38,7 +37,8 @@
 #   Claude Code re-runs this script on every update, and process creation is slow
 #   on Windows (Git Bash emulates fork), so the script prefers bash builtins
 #   (printf -v, integer maths, parameter expansion) over subshells and external
-#   tools. Per render it forks jq, git, and at most one stat. The unpriced-model
+#   tools. Per render it starts jq once and git once (twice inside a worktree),
+#   and runs stat only when it needs a file's size or age. The unpriced-model
 #   scan runs in the background at most once every 10 minutes.
 #
 # Platform notes
@@ -57,13 +57,15 @@ if [ "${1:-}" = "--selftest" ]; then
   export STATUSLINE_SYNC=1               # run the unpriced scan in the foreground
   unset CLAUDE_CONFIG_DIR                # tests point HOME at throwaway dirs
   fail=0
+  # Renders run under "$BASH", the bash running this test, which may not be
+  # the first bash on PATH (on macOS that can be Apple's bash 3.2).
   t() { # t <name> <json> <regex-that-must-match>  (ANSI stripped)
-    got=$(printf '%s' "$2" | bash "$0" | sed $'s/\033\\[[0-9;]*m//g')
+    got=$(printf '%s' "$2" | "$BASH" "$0" | sed $'s/\033\\[[0-9;]*m//g')
     if printf '%s' "$got" | grep -qE "$3"; then echo "ok   $1"
     else echo "FAIL $1: got [$got], want /$3/"; fail=1; fi
   }
   traw() { # traw <name> <json> <regex-against-RAW-escapes>
-    got=$(printf '%s' "$2" | bash "$0")
+    got=$(printf '%s' "$2" | "$BASH" "$0")
     if printf '%s' "$got" | grep -qE "$3"; then echo "ok   $1"
     else echo "FAIL $1: raw output did not match /$3/"; fail=1; fi
   }
@@ -83,7 +85,8 @@ if [ "${1:-}" = "--selftest" ]; then
   t "windows backslash cwd shows basename" \
     '{"model":{"id":"claude-sonnet-5","display_name":"S"},"workspace":{"current_dir":"C:\\Users\\nobody\\my-proj"},"cost":{"total_cost_usd":0},"context_window":{"context_window_size":200000,"used_percentage":10,"total_input_tokens":20000}}' \
     'S \| my-proj \| \$0\.00$'
-  # per-model heat: same 25% of the window, different verdicts
+  # per-model heat: each model's thresholds turn the bar amber, orange and red
+  # at different percentages
   heat() { # heat <name> <model-id> <window> <pct> <expected-raw-escape>
     traw "$1" \
       "{\"model\":{\"id\":\"$2\"},\"context_window\":{\"context_window_size\":$3,\"used_percentage\":$4,\"total_input_tokens\":$(( $3 * $4 / 100 ))}}" \
@@ -104,8 +107,8 @@ if [ "${1:-}" = "--selftest" ]; then
   heat "fable at 40% is orange"      claude-fable-5      200000 40 "$ORANGE"
   heat "fable at 65% is red"         claude-fable-5      200000 65 "$RED"
   heat "unknown model falls back to sonnet thresholds" claude-mystery 200000 40 "$AMBER"
-  traw "200k at 160k: absolute floor holds (80%, 40k left)" \
-    '{"model":{"id":"claude-sonnet-5"},"context_window":{"context_window_size":200000,"used_percentage":80,"total_input_tokens":160000}}' \
+  traw "200k at 160k: 40k left forces orange on haiku (70% alone is amber)" \
+    '{"model":{"id":"claude-haiku-4-5"},"context_window":{"context_window_size":200000,"used_percentage":70,"total_input_tokens":160000}}' \
     $'\033\\[38;5;208m'
   traw "200k at 185k: absolute floor forces red even on haiku" \
     '{"model":{"id":"claude-haiku-4-5"},"context_window":{"context_window_size":200000,"used_percentage":92,"total_input_tokens":185000}}' \
@@ -134,7 +137,7 @@ if [ "${1:-}" = "--selftest" ]; then
     mkdir -p "$d/.claude"
     for u in "$@"; do
       printf '{"session_id":"%s","model":{"id":"claude-sonnet-5"},"context_window":{"context_window_size":200000,"used_percentage":10,"total_input_tokens":%d}}' "$sid" "$u" \
-        | HOME="$d" bash "$0" | sed $'s/\033\\[[0-9;]*m//g'
+        | HOME="$d" "$BASH" "$0" | sed $'s/\033\\[[0-9;]*m//g'
     done | tail -1
   }
   te() { # te <name> <regex> <session> <tokens...>
@@ -148,29 +151,37 @@ if [ "${1:-}" = "--selftest" ]; then
   te "two samples is not enough evidence" 'k/200\.0k$'  s2 10000 20000
   te "spiky growth refuses to guess"      'k/200\.0k$'  s3 1000 2000 3000 60000
   # git segment against a real repo: the porcelain=v2 parse is the only
-  # non-trivial string work here, so it is tested end to end.
-  g=$(mktemp -d)
-  ( cd "$g" && git init -q . && git config user.email t@t && git config user.name t &&
-    git config core.autocrlf false &&
-    printf 'a\n' > a.txt && printf 'b\n' > b.txt && git add . && git commit -qm init &&
-    printf 'x\n' >> a.txt && printf 'y\n' >> b.txt ) >/dev/null 2>&1
+  # non-trivial string work here, so it is tested end to end. Without git these
+  # checks are skipped: the status line then just leaves the branch part out.
   gjson() { printf '{"model":{"id":"claude-sonnet-5","display_name":"S"},"workspace":{"current_dir":"%s"},"cost":{"total_cost_usd":0},"context_window":{"context_window_size":200000,"used_percentage":10,"total_input_tokens":20000}}' "$1"; }
-  t "git renders branch + dirty count" "$(gjson "$g")" '(main|master) ±2 \|'
-  gwin=$(cygpath -w "$g" 2>/dev/null || printf '%s' "$g"); gwin=${gwin//\\/\\\\}
-  t "git works with a Windows-style cwd" "$(gjson "$gwin")" '(main|master) ±2 \|'
-  ( cd "$g" && git add -A && git commit -qm clean ) >/dev/null 2>&1
-  t "clean tree shows no ± marker" "$(gjson "$g")" '(main|master) \|'
-  rm -rf "$g"
+  if command -v git >/dev/null 2>&1; then
+    g=$(mktemp -d)
+    ( cd "$g" && git init -q . && git config user.email t@t && git config user.name t &&
+      git config core.autocrlf false &&
+      printf 'a\n' > a.txt && printf 'b\n' > b.txt && git add . && git commit -qm init &&
+      printf 'x\n' >> a.txt && printf 'y\n' >> b.txt ) >/dev/null 2>&1
+    t "git renders branch + dirty count" "$(gjson "$g")" '(main|master) ±2 \|'
+    gwin=$(cygpath -w "$g" 2>/dev/null || printf '%s' "$g"); gwin=${gwin//\\/\\\\}
+    t "git works with a Windows-style cwd" "$(gjson "$gwin")" '(main|master) ±2 \|'
+    ( cd "$g" && git add -A && git commit -qm clean ) >/dev/null 2>&1
+    t "clean tree shows no ± marker" "$(gjson "$g")" '(main|master) \|'
+    rm -rf "$g"
+  else
+    for n in "git renders branch + dirty count" "git works with a Windows-style cwd" \
+             "clean tree shows no ± marker"; do
+      echo "skip $n (git not installed)"
+    done
+  fi
   t "non-repo cwd emits no git segment" "$(gjson /tmp)" 'S \| tmp \| \$0\.00$'
   t "garbage stdin degrades, never errors" 'not json' '.*'
   err=$(printf '{"session_id":"e1","model":{"id":"claude-sonnet-5"},"context_window":{"context_window_size":200000,"used_percentage":10,"total_input_tokens":20000}}' \
-    | HOME=/nonexistent-$$ bash "$0" 2>&1 >/dev/null)
+    | HOME=/nonexistent-$$ "$BASH" "$0" 2>&1 >/dev/null)
   if [ -z "$err" ]; then echo "ok   nothing on stderr when the config dir is missing"
   else echo "FAIL stderr not empty: [$err]"; fail=1; fi
   # cost ledger: deltas per session, summed across sessions, no double counting
   d=$(mktemp -d); mkdir -p "$d/.claude"
   cj() { printf '{"session_id":"%s","model":{"id":"claude-sonnet-5","display_name":"S"},"cost":{"total_cost_usd":%s},"context_window":{"context_window_size":200000,"used_percentage":10,"total_input_tokens":20000}}' "$1" "$2"; }
-  l1() { cj "$@" | HOME="$d" bash "$0" | head -1 | sed $'s/\033\\[[0-9;]*m//g'; }
+  l1() { cj "$@" | HOME="$d" "$BASH" "$0" | head -1 | sed $'s/\033\\[[0-9;]*m//g'; }
   for args in "a 1.0" "a 1.5" "a 1.5" "b 0.25"; do got=$(l1 $args); done
   if printf '%s' "$got" | grep -qE 'today \$1\.75 · [A-Za-z]+ \$1\.75$'; then echo "ok   ledger sums session deltas"
   else echo "FAIL ledger: got [$got]"; fail=1; fi
@@ -196,11 +207,11 @@ IFS= read -r -d '' INPUT || true
 
 DIM=$'\033[2m'; RESET=$'\033[0m'
 GREY=$'\033[38;5;245m'
-# set variable $1 to a colour escape — printf -v, no subshell fork
+# set variable $1 to a colour escape with printf -v, so no subshell fork
 c256()  { printf -v "$1" '\033[38;5;%sm' "$2"; }      # foreground
 c256b() { printf -v "$1" '\033[1;38;5;%sm' "$2"; }    # bold foreground
 
-# file_stat <var> <size|mtime> <path> — GNU stat first, BSD/macOS stat if that fails.
+# file_stat <var> <size|mtime> <path>: GNU stat first, BSD/macOS stat if that fails.
 # The order matters: on GNU, `stat -f` means "filesystem status" and prints junk.
 file_stat() {
   local gnu=%s bsd=%z out
@@ -303,8 +314,9 @@ fi
 #    last fetch: it renders dim once FETCH_HEAD is over 30 minutes old.
 if [ -n "${cwd:-}" ] && [ -d "$cwd" ]; then
   branch=""; dirty=0; ahead=0; behind=0
-  # .git/index is ~62 bytes per tracked file, so 12MB is ~100k files. Past that,
-  # `git status` is too slow for a status line and only the branch is shown.
+  # Each .git/index entry is 62 bytes plus the file's path, so 12MB is roughly
+  # 100k tracked files. Past that, `git status` is too slow for a status line and
+  # only the branch is shown. Checked only when the working folder is the repo root.
   idx_bytes=0
   [ -f "$cwd/.git/index" ] && file_stat idx_bytes size "$cwd/.git/index"
   if [ "$idx_bytes" -gt 12000000 ]; then
@@ -453,7 +465,7 @@ done
 printf '%s\n' "$out"
 
 # ── line 2: context bar, percentage, tokens used / window size ──────────────
-# human <var> <n> → 1.2k / 67.1k / 1.0M, so the column keeps a fixed width.
+# human <var> <n> → 1.2k / 67.1k / 1.0M: one decimal place keeps the figure short.
 # Pure bash: printf parses "67100e-3" as a float.
 human() {
   local n=$2
