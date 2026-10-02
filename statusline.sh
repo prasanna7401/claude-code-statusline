@@ -1,16 +1,34 @@
 #!/usr/bin/env bash
-# claude-code-statusline: a two-line status line for Claude Code.
+# claude-code-statusline: a one- or two-line status line for Claude Code.
 #
 #   line 1: Opus 5.5 (1M)-high | my-project | main ±4 ↑1 | $0.52 ($9.87/h) | today $3.10 · Oct $41.20
-#   line 2: ░░░░░░░░░░   7% 67.1k/1.0M  +142/-38  ~12 turns to red
+#   line 2: ░░░░░░░░░░   7% 67.1k/1.0M | +142/-38 | ~12 turns to red | 5h █░░░░ 8% (19:40) · wk █░░░░ 1% (Thu)
 #
-# Line 1  model and effort level, working directory, git branch with dirty /
-#         ahead / behind counts, session cost and burn rate, then spend today
-#         and this month (with "⚠ N unpriced" when Claude Code could not price
-#         a model).
-# Line 2  context-window bar, percentage, tokens used / window size, lines
-#         Claude added/removed this session, and a forecast of how many turns
-#         remain before the bar turns red.
+# Parts (the names statusline.conf uses)
+#   model     model name and effort level
+#   folder    working directory name
+#   git       branch with dirty / ahead / behind counts
+#   cost      session cost and burn rate
+#   spend     spend today and this month ("⚠ N unpriced" when Claude Code could
+#             not price a model)
+#   context   context-window bar, percentage, tokens used / window size
+#   churn     lines Claude added/removed this session
+#   forecast  how many turns remain before the context bar turns red
+#   limits    plan usage limits (Pro/Max): percent of the 5-hour and weekly
+#             limits used, with reset times
+#
+# Layout
+#   $CLAUDE_CONFIG_DIR/statusline.conf (default ~/.claude/statusline.conf)
+#   chooses which parts show, on which line, in what order. Without the file
+#   the layout is:
+#     line1=model folder git cost spend
+#     line2=context churn forecast limits
+#   A missing key keeps its default; "line2=" with nothing after it gives a
+#   one-line status line. A part named on neither line is hidden, and its work
+#   is skipped (no git call, no ledger or forecast file). Unknown names are
+#   ignored, a part named twice shows only in its first place, and "#" starts
+#   a comment. Each line joins its non-empty parts with a dim " | "; a line
+#   with nothing to show is not printed.
 #
 # Install
 #   See README.md, or run install.sh from the project folder.
@@ -37,9 +55,10 @@
 #   Claude Code re-runs this script on every update, and process creation is slow
 #   on Windows (Git Bash emulates fork), so the script prefers bash builtins
 #   (printf -v, integer maths, parameter expansion) over subshells and external
-#   tools. Per render it starts jq once and git once (twice inside a worktree),
-#   and runs stat only when it needs a file's size or age. The unpriced-model
-#   scan runs in the background at most once every 10 minutes.
+#   tools. Per render it starts jq once and, when the git part shows, git once
+#   (twice inside a worktree), and runs stat only when it needs a file's size
+#   or age. The unpriced-model scan runs in the background at most once every
+#   10 minutes. statusline.conf is read with a builtin loop.
 #
 # Platform notes
 #   * jq.exe and git.exe on Windows may emit CRLF: every line read from them has
@@ -150,6 +169,65 @@ if [ "${1:-}" = "--selftest" ]; then
   te "steady growth predicts turns to red" '~12 turns to red' s1 10000 20000 30000 40000 50000
   te "two samples is not enough evidence" 'k/200\.0k$'  s2 10000 20000
   te "spiky growth refuses to guess"      'k/200\.0k$'  s3 1000 2000 3000 60000
+  # plan usage limits: resets an hour and three days out from now
+  printf -v tnow '%(%s)T' -1
+  # lj <5h pct> <5h reset> [<wk pct> <wk reset>]: the JSON is built by printf
+  # from single-quoted formats, because bash 4.2 brace-expands a "{..,..}"
+  # literal written inside "$(...)".
+  lj() {
+    local rl
+    if [ "$#" -eq 0 ]; then rl=null
+    elif [ "$#" -eq 2 ]; then printf -v rl '{"five_hour":{"used_percentage":%s,"resets_at":%s}}' "$1" "$2"
+    else printf -v rl '{"five_hour":{"used_percentage":%s,"resets_at":%s},"seven_day":{"used_percentage":%s,"resets_at":%s}}' "$1" "$2" "$3" "$4"
+    fi
+    printf '{"model":{"id":"claude-sonnet-5"},"context_window":{"context_window_size":200000,"used_percentage":10,"total_input_tokens":20000},"rate_limits":%s}' "$rl"
+  }
+  in1h=$(( tnow + 3600 )); in3d=$(( tnow + 259200 )); ago1m=$(( tnow - 60 ))
+  t "limits show session and weekly use" "$(lj 42.7 "$in1h" 18 "$in3d")" \
+    '\| 5h ███░░ 42% \([0-9]{2}:[0-9]{2}\) · wk █░░░░ 18% \([A-Z][a-z]{2}\)$'
+  t "limits absent leave line 2 unchanged" "$(lj)" '20\.0k/200\.0k$'
+  t "a window past its reset is hidden" "$(lj 99 "$ago1m" 3 "$in3d")" \
+    '200\.0k \| wk █░░░░ 3% '
+  traw "limit near the cap turns red" "$(lj 95 "$in1h")" \
+    $'5h\033\\[0m \033\\[1;38;5;203m█████ 95%'
+  traw "limit under half is grey" "$(lj 20 "$in1h")" \
+    $'5h\033\\[0m \033\\[38;5;240m█░░░░ 20%'
+  # layout: statusline.conf under a throwaway HOME. Output is ANSI-stripped and
+  # ends in "#", so a missing or extra trailing newline is visible to the regex.
+  lay() { # lay <name> <conf text, or - for no file> <json> <bash regex>
+    local d got
+    d=$(mktemp -d); mkdir -p "$d/.claude"
+    [ "$2" = - ] || printf '%s' "$2" > "$d/.claude/statusline.conf"
+    got=$(printf '%s' "$3" | HOME="$d" "$BASH" "$0" | sed $'s/\033\\[[0-9;]*m//g'; printf '#')
+    rm -rf "$d"
+    if [[ "$got" =~ $4 ]]; then echo "ok   $1"
+    else echo "FAIL $1: got [$got], want /$4/"; fail=1; fi
+  }
+  NL=$'\n'
+  LJ="{\"model\":{\"id\":\"claude-sonnet-5\",\"display_name\":\"S\"},\"workspace\":{\"current_dir\":\"/tmp\"},\"cost\":{\"total_cost_usd\":0,\"total_lines_added\":5,\"total_lines_removed\":2},\"context_window\":{\"context_window_size\":200000,\"used_percentage\":10,\"total_input_tokens\":20000},\"rate_limits\":{\"five_hour\":{\"used_percentage\":8,\"resets_at\":$(( tnow + 3600 ))}}}"
+  lay "default layout without a conf file" - "$LJ" \
+    "^S [|] tmp [|] [$]0[.]00${NL}█░{9} +10% 20[.]0k/200[.]0k [|] [+]5/-2 [|] 5h █░{4} 8% [(][0-9:]{5}[)]#\$"
+  lay "conf order is the render order" $'line1=limits model\nline2=churn context\n' "$LJ" \
+    "^5h █░{4} 8% [(][0-9:]{5}[)] [|] S${NL}[+]5/-2 [|] █░{9} +10% 20[.]0k/200[.]0k#\$"
+  lay "empty line2 gives a single line" $'line2=\n' "$LJ" \
+    "^S [|] tmp [|] [$]0[.]00#\$"
+  lay "missing line2 key keeps the default line 2" $'line1=folder\n' "$LJ" \
+    "^tmp${NL}█░{9} .* 5h .*#\$"
+  lay "empty line1 prints line 2 alone" $'line1=\nline2=context\n' "$LJ" \
+    "^█░{9} +10% 20[.]0k/200[.]0k#\$"
+  lay "unknown names, comments and CRLF are tolerated" \
+    $'# my layout\r\nline1 = model bogus folder  # trailing note\r\nline2=nope context\r\n' "$LJ" \
+    "^S [|] tmp${NL}█░{9} +10% 20[.]0k/200[.]0k#\$"
+  # hidden parts skip their work: no ledger or samples file is written
+  d=$(mktemp -d); mkdir -p "$d/.claude"; printf 'line1=model\nline2=context\n' > "$d/.claude/statusline.conf"
+  for u in 10000 20000; do
+    printf '{"session_id":"h1","model":{"id":"claude-sonnet-5","display_name":"S"},"cost":{"total_cost_usd":%s},"context_window":{"context_window_size":200000,"used_percentage":10,"total_input_tokens":%d}}' "0.$u" "$u" \
+      | HOME="$d" "$BASH" "$0" >/dev/null
+  done
+  if [ ! -e "$d/.claude/.cost-ledger" ] && [ ! -e "$d/.claude/.statusline-ctx" ]; then
+    echo "ok   hidden spend and forecast write no files"
+  else echo "FAIL hidden spend/forecast still wrote: $(ls -A "$d/.claude" | tr '\n' ' ')"; fail=1; fi
+  rm -rf "$d"
   # git segment against a real repo: the porcelain=v2 parse is the only
   # non-trivial string work here, so it is tested end to end. Without git these
   # checks are skipped: the status line then just leaves the branch part out.
@@ -165,17 +243,22 @@ if [ "${1:-}" = "--selftest" ]; then
     t "git works with a Windows-style cwd" "$(gjson "$gwin")" '(main|master) ±2 \|'
     ( cd "$g" && git add -A && git commit -qm clean ) >/dev/null 2>&1
     t "clean tree shows no ± marker" "$(gjson "$g")" '(main|master) \|'
+    lay "hidden git part does not appear" $'line1=model folder cost\nline2=\n' "$(gjson "$g")" \
+      "^S [|] [^|]+ [|] [$]0[.]00#\$"
     rm -rf "$g"
   else
     for n in "git renders branch + dirty count" "git works with a Windows-style cwd" \
-             "clean tree shows no ± marker"; do
+             "clean tree shows no ± marker" "hidden git part does not appear"; do
       echo "skip $n (git not installed)"
     done
   fi
   t "non-repo cwd emits no git segment" "$(gjson /tmp)" 'S \| tmp \| \$0\.00$'
   t "garbage stdin degrades, never errors" 'not json' '.*'
+  # The path is set outside "$(...)": inside it, bash 4.2 joins "-$$" and the
+  # next word, so the render command never runs.
+  nohome=/nonexistent-$$
   err=$(printf '{"session_id":"e1","model":{"id":"claude-sonnet-5"},"context_window":{"context_window_size":200000,"used_percentage":10,"total_input_tokens":20000}}' \
-    | HOME=/nonexistent-$$ "$BASH" "$0" 2>&1 >/dev/null)
+    | HOME="$nohome" "$BASH" "$0" 2>&1 >/dev/null)
   if [ -z "$err" ]; then echo "ok   nothing on stderr when the config dir is missing"
   else echo "FAIL stderr not empty: [$err]"; fail=1; fi
   # cost ledger: deltas per session, summed across sessions, no double counting
@@ -222,7 +305,36 @@ file_stat() {
   printf -v "$1" '%s' "$out"
 }
 
-segments=()
+# Layout: $CFG/statusline.conf picks the parts and their order (see "Layout"
+# in the header). Read with a builtin loop, so it costs no extra process.
+L1="model folder git cost spend"; L2="context churn forecast limits"
+if [ -f "$CFG/statusline.conf" ]; then
+  while IFS= read -r line || [ -n "$line" ]; do
+    line=${line%$'\r'}; line=${line%%#*}
+    case "$line" in *=*) ;; *) continue ;; esac
+    key=${line%%=*}; key=${key//[[:space:]]/}
+    case "$key" in
+      line1) L1=${line#*=} ;;
+      line2) L2=${line#*=} ;;
+    esac
+  done < "$CFG/statusline.conf"
+fi
+show_model=""; show_folder=""; show_git=""; show_cost=""; show_spend=""
+show_context=""; show_churn=""; show_forecast=""; show_limits=""
+lay1=(); lay2=()
+# keep known names only, each once; a part listed on both lines stays on the first
+for n in $L1; do
+  case "$n" in model|folder|git|cost|spend|context|churn|forecast|limits) ;; *) continue ;; esac
+  v=show_$n; [ -n "${!v}" ] && continue
+  printf -v "$v" 1; lay1+=("$n")
+done
+for n in $L2; do
+  case "$n" in model|folder|git|cost|spend|context|churn|forecast|limits) ;; *) continue ;; esac
+  v=show_$n; [ -n "${!v}" ] && continue
+  printf -v "$v" 1; lay2+=("$n")
+done
+p_model=""; p_folder=""; p_git=""; p_cost=""; p_spend=""
+p_context=""; p_churn=""; p_forecast=""; p_limits=""
 
 # 1. one jq pass, one field per line. Never tab-split: bash collapses runs of
 #    tabs (tab is IFS whitespace), so an empty field would shift every later one.
@@ -246,7 +358,11 @@ while IFS= read -r line; do line=${line%$'\r'}; fields+=("$line"); done < <(
     ((.cost.total_lines_removed // 0) | floor),
     ((.cost.total_cost_usd // 0) as $c | (.cost.total_api_duration_ms // 0) as $a
       | if ($a >= 60000) and ($c | type == "number") then $c * 3600000 / $a else "" end),
-    ((.cost.total_cost_usd // 0) | if type == "number" then (. * 1000000 | floor) else 0 end)' 2>/dev/null
+    ((.cost.total_cost_usd // 0) | if type == "number" then (. * 1000000 | floor) else 0 end),
+    (.rate_limits.five_hour.used_percentage | if type == "number" then floor else "" end),
+    (.rate_limits.five_hour.resets_at | if type == "number" then floor else "" end),
+    (.rate_limits.seven_day.used_percentage | if type == "number" then floor else "" end),
+    (.rate_limits.seven_day.resets_at | if type == "number" then floor else "" end)' 2>/dev/null
 )
 model_id=${fields[0]:-}
 model=${fields[1]:-}
@@ -261,6 +377,10 @@ added=${fields[10]:-0}
 removed=${fields[11]:-0}
 rate=${fields[12]:-}
 cost_u=${fields[13]:-0}                  # session cost in micro-dollars
+lim5_pct=${fields[14]:-}                 # plan limits: empty when not on Pro/Max
+lim5_at=${fields[15]:-}                  #   or before the session's first reply
+lim7_pct=${fields[16]:-}
+lim7_at=${fields[17]:-}
 
 for v in ctx_size ctx_pct ctx_used added removed cost_u; do
   eval "[[ \"\${$v}\" =~ ^[0-9]+$ ]] || $v=0"
@@ -289,7 +409,7 @@ case "$effort" in
   *)      idx=0 ;;   # absent / unsupported → no suffix at all
 esac
 
-if [ -n "$model" ]; then
+if [ -n "$show_model" ] && [ -n "$model" ]; then
   label=$model
   if [ "$ctx_size" -eq 1000000 ]; then
     label="${label/ (1M context)/}"      # shortened to a bold " (1M)" marker
@@ -303,16 +423,16 @@ if [ -n "$model" ]; then
     if [ "$effort" = max ]; then c256b col "$shade"; else c256 col "$shade"; fi
     label="${label}${DIM}-${RESET}${col}${effort}${RESET}"
   fi
-  segments+=("$label")
+  p_model=$label
 fi
 
-[ -n "${cwd_base:-}" ] && segments+=("${GREY}${cwd_base}${RESET}")
+[ -n "$show_folder" ] && [ -n "${cwd_base:-}" ] && p_folder="${GREY}${cwd_base}${RESET}"
 
 # 3. git: branch ±dirty ↑ahead ↓behind from ONE `git status --porcelain=v2
 #    --branch` call, which carries the branch name, the ahead/behind pair and the
 #    dirty list. Never touches the network, so ↓behind is exact only against the
 #    last fetch: it renders dim once FETCH_HEAD is over 30 minutes old.
-if [ -n "${cwd:-}" ] && [ -d "$cwd" ]; then
+if [ -n "$show_git" ] && [ -n "${cwd:-}" ] && [ -d "$cwd" ]; then
   branch=""; dirty=0; ahead=0; behind=0
   # Each .git/index entry is 62 bytes plus the file's path, so 12MB is roughly
   # 100k tracked files. Past that, `git status` is too slow for a status line and
@@ -357,19 +477,19 @@ if [ -n "${cwd:-}" ] && [ -d "$cwd" ]; then
         c256 col 179; seg="${seg} ${col}↓${behind}${RESET}"
       fi
     fi
-    segments+=("$seg")
+    p_git=$seg
   fi
 fi
 
 # 4. session cost + burn rate. The rate divides by API time, not wall clock, so
 #    walking away from the keyboard does not make the session look cheap.
-if [[ "${cost:-}" =~ ^[0-9.]+([eE][-+]?[0-9]+)?$ ]]; then
+if [ -n "$show_cost" ] && [[ "${cost:-}" =~ ^[0-9.]+([eE][-+]?[0-9]+)?$ ]]; then
   printf -v money0 '%.2f' "$cost" 2>/dev/null || money0=$cost
   cseg="${DIM}\$${money0}${RESET}"
   if [[ "$rate" =~ ^[0-9.]+([eE][-+]?[0-9]+)?$ ]]; then
     printf -v money1 '%.2f' "$rate" 2>/dev/null && cseg="${cseg} ${DIM}(\$${money1}/h)${RESET}"
   fi
-  segments+=("$cseg")
+  p_cost=$cseg
 fi
 
 # 5. today / this month, from a ledger of the same per-session estimate.
@@ -387,7 +507,7 @@ printf -v today '%(%Y-%m-%d)T' -1
 printf -v mon_name '%(%b)T' -1
 printf -v now '%(%s)T' -1
 month=${today%-*}
-if [ -n "${session_id:-}" ] && [ -d "$CFG" ]; then
+if [ -n "$show_spend" ] && [ -n "${session_id:-}" ] && [ -d "$CFG" ]; then
   lock="$LEDGER.lock"
   if [ -d "$lock" ]; then                # a killed render leaves its lock behind
     file_stat lt mtime "$lock"
@@ -454,17 +574,10 @@ if [ -n "${session_id:-}" ] && [ -d "$CFG" ]; then
     else ( scan_unpriced ) >/dev/null 2>&1 </dev/null & fi
   fi
   if [ "$u_n" -gt 0 ]; then c256 col 179; lseg="${lseg} ${col}⚠ ${u_n} unpriced${RESET}"; fi
-  segments+=("$lseg")
+  p_spend=$lseg
 fi
 
-out=""
-for s in ${segments[@]+"${segments[@]}"}; do
-  [ -n "$out" ] && out="${out}${DIM} | ${RESET}"
-  out="${out}${s}"
-done
-printf '%s\n' "$out"
-
-# ── line 2: context bar, percentage, tokens used / window size ──────────────
+# ── context bar, percentage, tokens used / window size ──────────────────────
 # human <var> <n> → 1.2k / 67.1k / 1.0M: one decimal place keeps the figure short.
 # Pure bash: printf parses "67100e-3" as a float.
 human() {
@@ -479,8 +592,11 @@ human() {
 # spending"; the absolute tokens-remaining floor (50k / 20k) says "you are about
 # to compact". Together, red never arrives late on a 1M window and never early
 # on a cheap model.
+# The forecast reuses this state and colour, so it is computed for either part.
 state=0                                  # 0 ok, 1 notice, 2 warn, 3 critical
 read -r t_notice t_warn t_crit <<<"${thr:-40 65 85}"
+bar_c=""
+if [ -n "$show_context" ] || [ -n "$show_forecast" ]; then
 if   [ "$ctx_pct" -ge "$t_crit" ];   then state=3
 elif [ "$ctx_pct" -ge "$t_warn" ];   then state=2
 elif [ "$ctx_pct" -ge "$t_notice" ]; then state=1
@@ -500,27 +616,29 @@ case "$state" in
   1) c256  bar_c 179 ;;
   *) c256  bar_c 240 ;;
 esac
+fi
 
-width=10
-pct_clamped=$ctx_pct
-[ "$pct_clamped" -gt 100 ] && pct_clamped=100
-filled=$(( pct_clamped * width / 100 ))
-bar=""
-for ((i = 0; i < width; i++)); do
-  if [ "$i" -lt "$filled" ]; then bar="${bar}█"; else bar="${bar}░"; fi
-done
-
-printf -v l2 '%s%s %3d%%%s' "$bar_c" "$bar" "$ctx_pct" "$RESET"
-if [ "$ctx_size" -gt 0 ]; then
-  human hu "$ctx_used"; human hs "$ctx_size"
-  l2="${l2} ${DIM}${hu}/${hs}${RESET}"
+if [ -n "$show_context" ]; then
+  width=10
+  pct_clamped=$ctx_pct
+  [ "$pct_clamped" -gt 100 ] && pct_clamped=100
+  filled=$(( pct_clamped * width / 100 ))
+  bar=""
+  for ((i = 0; i < width; i++)); do
+    if [ "$i" -lt "$filled" ]; then bar="${bar}█"; else bar="${bar}░"; fi
+  done
+  printf -v p_context '%s%s %3d%%%s' "$bar_c" "$bar" "$ctx_pct" "$RESET"
+  if [ "$ctx_size" -gt 0 ]; then
+    human hu "$ctx_used"; human hs "$ctx_size"
+    p_context="${p_context} ${DIM}${hu}/${hs}${RESET}"
+  fi
 fi
 
 # churn: lines CLAUDE wrote via Edit/Write this session. Not `git diff`: your own
 # edits are absent and a line written then reverted still counts.
-if [ "$added" -gt 0 ] || [ "$removed" -gt 0 ]; then
+if [ -n "$show_churn" ] && { [ "$added" -gt 0 ] || [ "$removed" -gt 0 ]; }; then
   c256 cg 71; c256 cr 167
-  l2="${l2}  ${cg}+${added}${RESET}${DIM}/${RESET}${cr}-${removed}${RESET}"
+  p_churn="${cg}+${added}${RESET}${DIM}/${RESET}${cr}-${removed}${RESET}"
 fi
 
 # ── turns until the bar goes red ─────────────────────────────────────────────
@@ -532,7 +650,7 @@ fi
 # Concurrent sessions writing at the same instant are last-write-wins; the
 # loser re-samples on its next render.
 SAMPLES="$CFG/.statusline-ctx"
-if [ -n "${session_id:-}" ] && [ "$ctx_size" -gt 0 ] && [ "$ctx_used" -gt 0 ] && [ "$state" -lt 3 ]; then
+if [ -n "$show_forecast" ] && [ -n "${session_id:-}" ] && [ "$ctx_size" -gt 0 ] && [ "$ctx_used" -gt 0 ] && [ "$state" -lt 3 ]; then
   t_pct=$(( ctx_size * t_crit / 100 ))
   t_abs=$(( ctx_size - 20000 ))
   target=$t_pct; [ "$t_abs" -lt "$target" ] && target=$t_abs
@@ -578,7 +696,56 @@ if [ -n "${session_id:-}" ] && [ "$ctx_size" -gt 0 ] && [ "$ctx_used" -gt 0 ] &&
       [ "$tt" -le 99 ] && eta=$tt                      # beyond 99 is not news
     fi
   fi
-  [ -n "$eta" ] && l2="${l2}  ${DIM}~${eta} turns to${RESET} ${bar_c}red${RESET}"
+  [ -n "$eta" ] && p_forecast="${DIM}~${eta} turns to${RESET} ${bar_c}red${RESET}"
 fi
 
-printf '%s' "$l2"
+# ── plan usage limits (Pro/Max): the same bars as /usage and the desktop app ─
+# limit_seg <label> <pct> <resets_at epoch> → appends "5h ███░░ 42% (19:40)" to $lim.
+# Heat colours: grey under 50% (the context bar's "ok" grey), yellow from 50,
+# orange from 75, bold red from 90.
+# The 5-cell bar rounds up, so any use at all shows one cell (as the app does).
+# The reset shows as a clock time when it is under a day away, else a weekday.
+# A window whose reset has already passed is stale until the next reply: hidden.
+lim=""
+limit_seg() {
+  local p=$2 at=$3 when col bar="" i fill
+  [[ "$p" =~ ^[0-9]+$ ]] || return
+  [[ "$at" =~ ^[0-9]+$ ]] && [ "$at" -le "$now" ] && return
+  if   [ "$p" -ge 90 ]; then c256b col 203
+  elif [ "$p" -ge 75 ]; then c256  col 208
+  elif [ "$p" -ge 50 ]; then c256  col 179
+  else                       c256  col 240
+  fi
+  fill=$(( (p * 5 + 99) / 100 )); [ "$fill" -gt 5 ] && fill=5
+  for ((i = 0; i < 5; i++)); do
+    if [ "$i" -lt "$fill" ]; then bar="${bar}█"; else bar="${bar}░"; fi
+  done
+  when=""
+  if [[ "$at" =~ ^[0-9]+$ ]]; then
+    if [ $(( at - now )) -lt 86400 ]; then printf -v when ' (%(%H:%M)T)' "$at"
+    else printf -v when ' (%(%a)T)' "$at"; fi
+  fi
+  lim="${lim:+$lim${DIM} · ${RESET}}${DIM}$1${RESET} ${col}${bar} $p%${RESET}${DIM}${when}${RESET}"
+}
+if [ -n "$show_limits" ]; then
+  limit_seg 5h "$lim5_pct" "$lim5_at"
+  limit_seg wk "$lim7_pct" "$lim7_at"
+  p_limits=$lim
+fi
+
+# ── output: each line joins its non-empty parts with a dim " | " ───────────
+# join_parts <var> <part names...>
+join_parts() {
+  local _dst=$1 _out="" n v
+  shift
+  for n in "$@"; do
+    v=p_$n; [ -n "${!v}" ] || continue
+    _out="${_out:+$_out${DIM} | ${RESET}}${!v}"
+  done
+  printf -v "$_dst" '%s' "$_out"
+}
+join_parts out1 ${lay1[@]+"${lay1[@]}"}
+join_parts out2 ${lay2[@]+"${lay2[@]}"}
+# Every printed line but the last ends in "\n"; an empty line is not printed.
+if [ -n "$out1" ] && [ -n "$out2" ]; then printf '%s\n%s' "$out1" "$out2"
+else printf '%s' "$out1$out2"; fi
