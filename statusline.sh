@@ -171,19 +171,26 @@ if [ "${1:-}" = "--selftest" ]; then
   te "spiky growth refuses to guess"      'k/200\.0k$'  s3 1000 2000 3000 60000
   # plan usage limits: resets an hour and three days out from now
   printf -v tnow '%(%s)T' -1
-  lj() { printf '{"model":{"id":"claude-sonnet-5"},"context_window":{"context_window_size":200000,"used_percentage":10,"total_input_tokens":20000},"rate_limits":%s}' "$1"; }
-  t "limits show session and weekly use" \
-    "$(lj "{\"five_hour\":{\"used_percentage\":42.7,\"resets_at\":$(( tnow + 3600 ))},\"seven_day\":{\"used_percentage\":18,\"resets_at\":$(( tnow + 259200 ))}}")" \
+  # lj <5h pct> <5h reset> [<wk pct> <wk reset>]: the JSON is built by printf
+  # from single-quoted formats, because bash 4.2 brace-expands a "{..,..}"
+  # literal written inside "$(...)".
+  lj() {
+    local rl
+    if [ "$#" -eq 0 ]; then rl=null
+    elif [ "$#" -eq 2 ]; then printf -v rl '{"five_hour":{"used_percentage":%s,"resets_at":%s}}' "$1" "$2"
+    else printf -v rl '{"five_hour":{"used_percentage":%s,"resets_at":%s},"seven_day":{"used_percentage":%s,"resets_at":%s}}' "$1" "$2" "$3" "$4"
+    fi
+    printf '{"model":{"id":"claude-sonnet-5"},"context_window":{"context_window_size":200000,"used_percentage":10,"total_input_tokens":20000},"rate_limits":%s}' "$rl"
+  }
+  in1h=$(( tnow + 3600 )); in3d=$(( tnow + 259200 )); ago1m=$(( tnow - 60 ))
+  t "limits show session and weekly use" "$(lj 42.7 "$in1h" 18 "$in3d")" \
     '\| 5h ███░░ 42% \([0-9]{2}:[0-9]{2}\) · wk █░░░░ 18% \([A-Z][a-z]{2}\)$'
-  t "limits absent leave line 2 unchanged" "$(lj null)" '20\.0k/200\.0k$'
-  t "a window past its reset is hidden" \
-    "$(lj "{\"five_hour\":{\"used_percentage\":99,\"resets_at\":$(( tnow - 60 ))},\"seven_day\":{\"used_percentage\":3,\"resets_at\":$(( tnow + 259200 ))}}")" \
+  t "limits absent leave line 2 unchanged" "$(lj)" '20\.0k/200\.0k$'
+  t "a window past its reset is hidden" "$(lj 99 "$ago1m" 3 "$in3d")" \
     '200\.0k \| wk █░░░░ 3% '
-  traw "limit near the cap turns red" \
-    "$(lj "{\"five_hour\":{\"used_percentage\":95,\"resets_at\":$(( tnow + 3600 ))}}")" \
+  traw "limit near the cap turns red" "$(lj 95 "$in1h")" \
     $'5h\033\\[0m \033\\[1;38;5;203m█████ 95%'
-  traw "limit under half is grey" \
-    "$(lj "{\"five_hour\":{\"used_percentage\":20,\"resets_at\":$(( tnow + 3600 ))}}")" \
+  traw "limit under half is grey" "$(lj 20 "$in1h")" \
     $'5h\033\\[0m \033\\[38;5;240m█░░░░ 20%'
   # layout: statusline.conf under a throwaway HOME. Output is ANSI-stripped and
   # ends in "#", so a missing or extra trailing newline is visible to the regex.
@@ -247,8 +254,11 @@ if [ "${1:-}" = "--selftest" ]; then
   fi
   t "non-repo cwd emits no git segment" "$(gjson /tmp)" 'S \| tmp \| \$0\.00$'
   t "garbage stdin degrades, never errors" 'not json' '.*'
+  # The path is set outside "$(...)": inside it, bash 4.2 joins "-$$" and the
+  # next word, so the render command never runs.
+  nohome=/nonexistent-$$
   err=$(printf '{"session_id":"e1","model":{"id":"claude-sonnet-5"},"context_window":{"context_window_size":200000,"used_percentage":10,"total_input_tokens":20000}}' \
-    | HOME=/nonexistent-$$ "$BASH" "$0" 2>&1 >/dev/null)
+    | HOME="$nohome" "$BASH" "$0" 2>&1 >/dev/null)
   if [ -z "$err" ]; then echo "ok   nothing on stderr when the config dir is missing"
   else echo "FAIL stderr not empty: [$err]"; fail=1; fi
   # cost ledger: deltas per session, summed across sessions, no double counting
