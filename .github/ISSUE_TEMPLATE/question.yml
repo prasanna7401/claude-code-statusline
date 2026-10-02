@@ -1,0 +1,18 @@
+name: Question
+description: Ask about installing, reading or changing the status line.
+labels: [question]
+body:
+  - type: markdown
+    attributes:
+      value: The README's Troubleshooting and FAQ sections answer the most common questions. Please do not paste API keys, session logs or anything private.
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [macOS, Linux, Windows (Git Bash), Other]

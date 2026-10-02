@@ -12,6 +12,11 @@ body:
     validations:
       required: true
   - type: textarea
+    id: shown
+    attributes:
+      label: What the status line shows
+      description: A screenshot, or the two lines copied as text.
+  - type: textarea
     id: output
     attributes:
       label: Output of `bash ~/.claude/statusline.sh --selftest`

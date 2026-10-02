@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh — installs or removes claude-code-statusline.
+# install.sh: installs or removes claude-code-statusline.
 #
 #   bash install.sh              copy statusline.sh into the Claude config dir,
 #                                point settings.json at it, run the self-test
@@ -41,9 +41,20 @@ if [ "${1:-}" = "--uninstall" ]; then
   exit 0
 fi
 
-# bash 4.2+ is needed by the status line itself, not by this installer.
-if ! bash -c '[ "${BASH_VERSINFO[0]}" -gt 4 ] || { [ "${BASH_VERSINFO[0]}" -eq 4 ] && [ "${BASH_VERSINFO[1]}" -ge 2 ]; }'; then
-  die "bash $(bash -c 'echo $BASH_VERSION') is too old; 4.2 or newer is needed. On macOS: brew install bash"
+# The status line needs bash 4.2+. The bash running this installer is the one
+# that gets checked, runs the self-test and goes into settings.json, so on macOS
+# `/opt/homebrew/bin/bash install.sh` works even when Apple's bash 3.2 is first
+# on PATH.
+if [ "${BASH_VERSINFO[0]}" -lt 4 ] || { [ "${BASH_VERSINFO[0]}" -eq 4 ] && [ "${BASH_VERSINFO[1]}" -lt 2 ]; }; then
+  die "bash $BASH_VERSION is too old; 4.2 or newer is needed. On macOS: brew install bash, then run /opt/homebrew/bin/bash install.sh (Intel Macs: /usr/local/bin/bash install.sh)"
+fi
+
+# settings.json says plain "bash" when that finds this same bash, and this
+# bash's full path when the first bash on PATH is a different one.
+runner=bash
+path_bash=$(command -v bash 2>/dev/null || true)
+if [ -z "$path_bash" ] || ! [ "$BASH" -ef "$path_bash" ]; then
+  runner="\"$BASH\""
 fi
 
 mkdir -p "$CFG"
@@ -56,13 +67,14 @@ command -v cygpath >/dev/null 2>&1 && path="$(cygpath -m "$TARGET")"
 if [ -f "$SETTINGS" ] && old=$(jq -c '.statusLine // empty' "$SETTINGS" 2>/dev/null) && [ -n "$old" ]; then
   echo "Replacing your existing statusLine setting: $old"
 fi
-edit_settings '.statusLine = {type: "command", command: ("bash " + $p)}' --arg p "$path"
+edit_settings '.statusLine = {type: "command", command: ($b + " \"" + $p + "\"")}' --arg b "$runner" --arg p "$path"
 echo "Installed $TARGET"
 echo "Set statusLine in $SETTINGS (backup: settings.json.bak)"
 echo
 
 echo "Running the self-test..."
-if report=$(bash "$TARGET" --selftest); then
+if report=$("$BASH" "$TARGET" --selftest); then
+  grep '^skip' <<<"$report" || true
   echo "All $(grep -c '^ok' <<<"$report") checks passed."
 else
   grep -v '^ok' <<<"$report" || true
