@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="796" height="234" viewBox="0 0 796 234" role="img" aria-label="Three examples of the status line: low, middle and nearly full context">
-<rect x="0.5" y="0.5" width="795" height="233" rx="8" fill="#0d1117" stroke="#30363d"/>
-<path d="M0.5 30 V8.5 a8 8 0 0 1 8 -8 H787.5 a8 8 0 0 1 8 8 V30 Z" fill="#161b22" stroke="#30363d"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="888" height="234" viewBox="0 0 888 234" role="img" aria-label="Three examples of the status line: low, middle and nearly full context, with plan usage limits at the end of line 2">
+<rect x="0.5" y="0.5" width="887" height="233" rx="8" fill="#0d1117" stroke="#30363d"/>
+<path d="M0.5 30 V8.5 a8 8 0 0 1 8 -8 H879.5 a8 8 0 0 1 8 8 V30 Z" fill="#161b22" stroke="#30363d"/>
 <circle cx="18" cy="15.0" r="6" fill="#ff5f57"/>
 <circle cx="38" cy="15.0" r="6" fill="#febc2e"/>
 <circle cx="58" cy="15.0" r="6" fill="#28c840"/>
@@ -16,7 +16,17 @@
 <rect x="78.8" y="71" width="7.8" height="17" fill="#585858" fill-opacity="0.3"/>
 <rect x="87.2" y="71" width="7.8" height="17" fill="#585858" fill-opacity="0.3"/>
 <rect x="95.6" y="71" width="7.8" height="17" fill="#585858" fill-opacity="0.3"/>
-<text y="84" xml:space="preserve"><tspan x="104 112.4 120.8 129.2 137.6" fill="#585858">  18%</tspan><tspan x="146"> </tspan><tspan x="154.4 162.8 171.2 179.6 188 196.4 204.8 213.2 221.6 230 238.4 246.8" fill-opacity="0.55">36.0k/200.0k</tspan><tspan x="255.2 263.6">  </tspan><tspan x="272 280.4 288.8" fill="#5faf5f">+56</tspan><tspan x="297.2" fill-opacity="0.55">/</tspan><tspan x="305.6 314 322.4" fill="#d75f5f">-12</tspan><tspan x="330.8 339.2">  </tspan><tspan x="347.6 356 364.4 372.8 381.2 389.6 398 406.4 414.8 423.2 431.6 440" fill-opacity="0.55">~17 turns to</tspan><tspan x="448.4"> </tspan><tspan x="456.8 465.2 473.6" fill="#585858">red</tspan></text>
+<rect x="549.2" y="71" width="7.8" height="17" fill="#585858"/>
+<rect x="557.6" y="71" width="7.8" height="17" fill="#585858" fill-opacity="0.3"/>
+<rect x="566" y="71" width="7.8" height="17" fill="#585858" fill-opacity="0.3"/>
+<rect x="574.4" y="71" width="7.8" height="17" fill="#585858" fill-opacity="0.3"/>
+<rect x="582.8" y="71" width="7.8" height="17" fill="#585858" fill-opacity="0.3"/>
+<rect x="734" y="71" width="7.8" height="17" fill="#585858"/>
+<rect x="742.4" y="71" width="7.8" height="17" fill="#585858" fill-opacity="0.3"/>
+<rect x="750.8" y="71" width="7.8" height="17" fill="#585858" fill-opacity="0.3"/>
+<rect x="759.2" y="71" width="7.8" height="17" fill="#585858" fill-opacity="0.3"/>
+<rect x="767.6" y="71" width="7.8" height="17" fill="#585858" fill-opacity="0.3"/>
+<text y="84" xml:space="preserve"><tspan x="104 112.4 120.8 129.2 137.6" fill="#585858">  18%</tspan><tspan x="146"> </tspan><tspan x="154.4 162.8 171.2 179.6 188 196.4 204.8 213.2 221.6 230 238.4 246.8" fill-opacity="0.55">36.0k/200.0k</tspan><tspan x="255.2 263.6 272" fill-opacity="0.55"> | </tspan><tspan x="280.4 288.8 297.2" fill="#5faf5f">+56</tspan><tspan x="305.6" fill-opacity="0.55">/</tspan><tspan x="314 322.4 330.8" fill="#d75f5f">-12</tspan><tspan x="339.2 347.6 356" fill-opacity="0.55"> | </tspan><tspan x="364.4 372.8 381.2 389.6 398 406.4 414.8 423.2 431.6 440 448.4 456.8" fill-opacity="0.55">~17 turns to</tspan><tspan x="465.2"> </tspan><tspan x="473.6 482 490.4" fill="#585858">red</tspan><tspan x="498.8 507.2 515.6" fill-opacity="0.55"> | </tspan><tspan x="524 532.4" fill-opacity="0.55">5h</tspan><tspan x="540.8"> </tspan><tspan x="591.2 599.6 608" fill="#585858"> 8%</tspan><tspan x="616.4 624.8 633.2 641.6 650 658.4 666.8 675.2" fill-opacity="0.55"> (18:40)</tspan><tspan x="683.6 692 700.4" fill-opacity="0.55"> · </tspan><tspan x="708.8 717.2" fill-opacity="0.55">wk</tspan><tspan x="725.6"> </tspan><tspan x="776 784.4 792.8" fill="#585858"> 2%</tspan><tspan x="801.2 809.6 818 826.4 834.8 843.2" fill-opacity="0.55"> (Thu)</tspan></text>
 <text y="106" xml:space="preserve"></text>
 <text y="128" xml:space="preserve"><tspan x="20 28.4 36.8 45.2 53.6 62 70.4 78.8 87.2 95.6 104 112.4 120.8" fill="#d7af00" font-weight="bold">Opus 5.5 (1M)</tspan><tspan x="129.2" fill-opacity="0.55">-</tspan><tspan x="137.6 146 154.4 162.8" fill="#d7af00">high</tspan><tspan x="171.2 179.6 188" fill-opacity="0.55"> | </tspan><tspan x="196.4 204.8 213.2 221.6 230 238.4 246.8 255.2 263.6 272" fill="#8a8a8a">my-project</tspan><tspan x="280.4 288.8 297.2" fill-opacity="0.55"> | </tspan><tspan x="305.6 314 322.4 330.8" fill-opacity="0.55">main</tspan><tspan x="339.2"> </tspan><tspan x="347.6 356" fill="#d7af5f">±3</tspan><tspan x="364.4"> </tspan><tspan x="372.8 381.2" fill="#5faf87">↑1</tspan><tspan x="389.6 398 406.4" fill-opacity="0.55"> | </tspan><tspan x="414.8 423.2 431.6 440 448.4" fill-opacity="0.55">$4.87</tspan><tspan x="456.8"> </tspan><tspan x="465.2 473.6 482 490.4 498.8 507.2 515.6 524 532.4 540.8" fill-opacity="0.55">($10.08/h)</tspan><tspan x="549.2 557.6 566" fill-opacity="0.55"> | </tspan><tspan x="574.4 582.8 591.2 599.6 608 616.4 624.8 633.2 641.6 650 658.4 666.8 675.2 683.6 692 700.4 708.8 717.2 725.6 734 742.4 750.8 759.2 767.6" fill-opacity="0.55">today $5.28 · Oct $28.82</tspan></text>
 <rect x="20" y="137" width="7.8" height="17" fill="#d7af5f"/>
@@ -29,7 +39,17 @@
 <rect x="78.8" y="137" width="7.8" height="17" fill="#d7af5f" fill-opacity="0.3"/>
 <rect x="87.2" y="137" width="7.8" height="17" fill="#d7af5f" fill-opacity="0.3"/>
 <rect x="95.6" y="137" width="7.8" height="17" fill="#d7af5f" fill-opacity="0.3"/>
-<text y="150" xml:space="preserve"><tspan x="104 112.4 120.8 129.2 137.6" fill="#d7af5f">  34%</tspan><tspan x="146"> </tspan><tspan x="154.4 162.8 171.2 179.6 188 196.4 204.8 213.2 221.6 230 238.4" fill-opacity="0.55">340.0k/1.0M</tspan><tspan x="246.8 255.2">  </tspan><tspan x="263.6 272 280.4 288.8" fill="#5faf5f">+142</tspan><tspan x="297.2" fill-opacity="0.55">/</tspan><tspan x="305.6 314 322.4" fill="#d75f5f">-38</tspan><tspan x="330.8 339.2">  </tspan><tspan x="347.6 356 364.4 372.8 381.2 389.6 398 406.4 414.8 423.2 431.6 440" fill-opacity="0.55">~21 turns to</tspan><tspan x="448.4"> </tspan><tspan x="456.8 465.2 473.6" fill="#d7af5f">red</tspan></text>
+<rect x="549.2" y="137" width="7.8" height="17" fill="#d7af5f"/>
+<rect x="557.6" y="137" width="7.8" height="17" fill="#d7af5f"/>
+<rect x="566" y="137" width="7.8" height="17" fill="#d7af5f"/>
+<rect x="574.4" y="137" width="7.8" height="17" fill="#d7af5f"/>
+<rect x="582.8" y="137" width="7.8" height="17" fill="#d7af5f" fill-opacity="0.3"/>
+<rect x="742.4" y="137" width="7.8" height="17" fill="#585858"/>
+<rect x="750.8" y="137" width="7.8" height="17" fill="#585858"/>
+<rect x="759.2" y="137" width="7.8" height="17" fill="#585858" fill-opacity="0.3"/>
+<rect x="767.6" y="137" width="7.8" height="17" fill="#585858" fill-opacity="0.3"/>
+<rect x="776" y="137" width="7.8" height="17" fill="#585858" fill-opacity="0.3"/>
+<text y="150" xml:space="preserve"><tspan x="104 112.4 120.8 129.2 137.6" fill="#d7af5f">  34%</tspan><tspan x="146"> </tspan><tspan x="154.4 162.8 171.2 179.6 188 196.4 204.8 213.2 221.6 230 238.4" fill-opacity="0.55">340.0k/1.0M</tspan><tspan x="246.8 255.2 263.6" fill-opacity="0.55"> | </tspan><tspan x="272 280.4 288.8 297.2" fill="#5faf5f">+142</tspan><tspan x="305.6" fill-opacity="0.55">/</tspan><tspan x="314 322.4 330.8" fill="#d75f5f">-38</tspan><tspan x="339.2 347.6 356" fill-opacity="0.55"> | </tspan><tspan x="364.4 372.8 381.2 389.6 398 406.4 414.8 423.2 431.6 440 448.4 456.8" fill-opacity="0.55">~21 turns to</tspan><tspan x="465.2"> </tspan><tspan x="473.6 482 490.4" fill="#d7af5f">red</tspan><tspan x="498.8 507.2 515.6" fill-opacity="0.55"> | </tspan><tspan x="524 532.4" fill-opacity="0.55">5h</tspan><tspan x="540.8"> </tspan><tspan x="591.2 599.6 608 616.4" fill="#d7af5f"> 62%</tspan><tspan x="624.8 633.2 641.6 650 658.4 666.8 675.2 683.6" fill-opacity="0.55"> (18:40)</tspan><tspan x="692 700.4 708.8" fill-opacity="0.55"> · </tspan><tspan x="717.2 725.6" fill-opacity="0.55">wk</tspan><tspan x="734"> </tspan><tspan x="784.4 792.8 801.2 809.6" fill="#585858"> 31%</tspan><tspan x="818 826.4 834.8 843.2 851.6 860" fill-opacity="0.55"> (Thu)</tspan></text>
 <text y="172" xml:space="preserve"></text>
 <text y="194" xml:space="preserve"><tspan x="20 28.4 36.8 45.2 53.6 62 70.4 78.8" fill="#5fafaf">Sonnet 5</tspan><tspan x="87.2" fill-opacity="0.55">-</tspan><tspan x="95.6 104 112.4 120.8" fill="#5fafaf">high</tspan><tspan x="129.2 137.6 146" fill-opacity="0.55"> | </tspan><tspan x="154.4 162.8 171.2 179.6 188 196.4 204.8 213.2 221.6 230" fill="#8a8a8a">my-project</tspan><tspan x="238.4 246.8 255.2" fill-opacity="0.55"> | </tspan><tspan x="263.6 272 280.4 288.8" fill-opacity="0.55">main</tspan><tspan x="297.2"> </tspan><tspan x="305.6 314" fill="#d7af5f">±3</tspan><tspan x="322.4"> </tspan><tspan x="330.8 339.2" fill="#5faf87">↑1</tspan><tspan x="347.6 356 364.4" fill-opacity="0.55"> | </tspan><tspan x="372.8 381.2 389.6 398 406.4" fill-opacity="0.55">$2.96</tspan><tspan x="414.8"> </tspan><tspan x="423.2 431.6 440 448.4 456.8 465.2 473.6 482 490.4" fill-opacity="0.55">($8.81/h)</tspan><tspan x="498.8 507.2 515.6" fill-opacity="0.55"> | </tspan><tspan x="524 532.4 540.8 549.2 557.6 566 574.4 582.8 591.2 599.6 608 616.4 624.8 633.2 641.6 650 658.4 666.8 675.2 683.6 692 700.4 708.8 717.2" fill-opacity="0.55">today $8.24 · Oct $31.78</tspan></text>
 <rect x="20" y="203" width="7.8" height="17" fill="#ff5f5f"/>
@@ -42,6 +62,16 @@
 <rect x="78.8" y="203" width="7.8" height="17" fill="#ff5f5f"/>
 <rect x="87.2" y="203" width="7.8" height="17" fill="#ff5f5f"/>
 <rect x="95.6" y="203" width="7.8" height="17" fill="#ff5f5f" fill-opacity="0.3"/>
-<text y="216" xml:space="preserve"><tspan x="104 112.4 120.8 129.2 137.6" fill="#ff5f5f" font-weight="bold">  91%</tspan><tspan x="146"> </tspan><tspan x="154.4 162.8 171.2 179.6 188 196.4 204.8 213.2 221.6 230 238.4 246.8 255.2" fill-opacity="0.55">182.0k/200.0k</tspan><tspan x="263.6 272">  </tspan><tspan x="280.4 288.8 297.2 305.6" fill="#5faf5f">+318</tspan><tspan x="314" fill-opacity="0.55">/</tspan><tspan x="322.4 330.8 339.2" fill="#d75f5f">-97</tspan></text>
+<rect x="406.4" y="203" width="7.8" height="17" fill="#ff5f5f"/>
+<rect x="414.8" y="203" width="7.8" height="17" fill="#ff5f5f"/>
+<rect x="423.2" y="203" width="7.8" height="17" fill="#ff5f5f"/>
+<rect x="431.6" y="203" width="7.8" height="17" fill="#ff5f5f"/>
+<rect x="440" y="203" width="7.8" height="17" fill="#ff5f5f"/>
+<rect x="599.6" y="203" width="7.8" height="17" fill="#585858"/>
+<rect x="608" y="203" width="7.8" height="17" fill="#585858"/>
+<rect x="616.4" y="203" width="7.8" height="17" fill="#585858"/>
+<rect x="624.8" y="203" width="7.8" height="17" fill="#585858" fill-opacity="0.3"/>
+<rect x="633.2" y="203" width="7.8" height="17" fill="#585858" fill-opacity="0.3"/>
+<text y="216" xml:space="preserve"><tspan x="104 112.4 120.8 129.2 137.6" fill="#ff5f5f" font-weight="bold">  91%</tspan><tspan x="146"> </tspan><tspan x="154.4 162.8 171.2 179.6 188 196.4 204.8 213.2 221.6 230 238.4 246.8 255.2" fill-opacity="0.55">182.0k/200.0k</tspan><tspan x="263.6 272 280.4" fill-opacity="0.55"> | </tspan><tspan x="288.8 297.2 305.6 314" fill="#5faf5f">+318</tspan><tspan x="322.4" fill-opacity="0.55">/</tspan><tspan x="330.8 339.2 347.6" fill="#d75f5f">-97</tspan><tspan x="356 364.4 372.8" fill-opacity="0.55"> | </tspan><tspan x="381.2 389.6" fill-opacity="0.55">5h</tspan><tspan x="398"> </tspan><tspan x="448.4 456.8 465.2 473.6" fill="#ff5f5f" font-weight="bold"> 93%</tspan><tspan x="482 490.4 498.8 507.2 515.6 524 532.4 540.8" fill-opacity="0.55"> (18:40)</tspan><tspan x="549.2 557.6 566" fill-opacity="0.55"> · </tspan><tspan x="574.4 582.8" fill-opacity="0.55">wk</tspan><tspan x="591.2"> </tspan><tspan x="641.6 650 658.4 666.8" fill="#585858"> 48%</tspan><tspan x="675.2 683.6 692 700.4 708.8 717.2" fill-opacity="0.55"> (Thu)</tspan></text>
 </g>
 </svg>

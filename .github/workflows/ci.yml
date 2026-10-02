@@ -40,9 +40,15 @@ jobs:
         run: |
           bash install.sh
           jq -e '.statusLine.command | endswith("statusline.sh\"")' "$CLAUDE_CONFIG_DIR/settings.json"
+          test ! -e "$CLAUDE_CONFIG_DIR/statusline.conf"
+          # menu fed from a pipe: untick git, one line starting "limits model"
+          printf '3\n\nn\nlimits model\n\n' | INSTALL_FORCE_MENU=1 bash install.sh
+          grep -qx 'line1=limits model folder cost spend context churn forecast' "$CLAUDE_CONFIG_DIR/statusline.conf"
+          grep -qx 'line2=' "$CLAUDE_CONFIG_DIR/statusline.conf"
           bash install.sh --uninstall
           jq -e 'has("statusLine") | not' "$CLAUDE_CONFIG_DIR/settings.json"
           test ! -e "$CLAUDE_CONFIG_DIR/statusline.sh"
+          test ! -e "$CLAUDE_CONFIG_DIR/statusline.conf"
 
   shellcheck:
     runs-on: ubuntu-latest
